@@ -1,6 +1,9 @@
 # NOTE:
 Expect baseline repo update
-currently missing SIFT feature and stuff
+now has SIFT feature and stuff
+
+# IDEAS for Solving
+* Method - Exploration: Pose Graph Feature Map
 
 # Environment Information
 - Randomly generated maze
