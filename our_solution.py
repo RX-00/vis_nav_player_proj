@@ -87,13 +87,25 @@ class KeyboardPlayerPyGame(Player):
             # NOTE: WASD Controls, but a & d turn you 90 degrees for mapping reasons
             pygame.K_a: 'left_90_degs',
             pygame.K_d: 'right_90_degs',
-            pygame.K_w: Action.FORWARD
+            pygame.K_w: 'frwrd_amnt',
+            pygame.K_s: Action.BACKWARD
         }
 
     def act(self):
         """
         Handle player actions based on keyboard input
         """
+        # global variables for turning action
+        # NOTE: the reason why they're global has to do with how pygame works
+        # turn_flag refers to left_90_degs  when =  1
+        #                     right_90_degs when = -1
+        # frwrd_flag refers to moving forward when = 1
+        #                      not moving at  when = 0
+        global curr_iter, turn_flag, frwrd_flag
+        max_iter = 37 # arbitrary for turning
+        max_iter_frwrd = 5
+        self.last_act = Action.IDLE
+
         for event in pygame.event.get():
             #  Quit if user closes window or presses escape
             if event.type == pygame.QUIT:
@@ -106,18 +118,52 @@ class KeyboardPlayerPyGame(Player):
                 if event.key in self.keymap:
                     # If yes, bitwise OR the current action with the new one
                     # This allows for multiple actions to be combined into a single action
-                    self.last_act |= self.keymap[event.key]
+                    #self.last_act |= self.keymap[event.key]
+                    # NOTE: For our purposes we (probably) don't need multiple actions combined together
+                    self.last_act = self.keymap[event.key]
+                    if self.last_act == 'left_90_degs':
+                        turn_flag = 1
+                        curr_iter = 0
+                    elif self.last_act == 'right_90_degs':
+                        turn_flag = -1
+                        curr_iter = 0
+                    elif self.last_act == 'frwrd_amnt':
+                        frwrd_flag = 1
+                        curr_iter = 0
                 else:
                     # If a key is pressed that is not mapped to an action, then display target images
                     self.show_target_images()
             # Check if a key has been released
-            if event.type == pygame.KEYUP:
-                # Check if the released key is in the keymap
-                if event.key in self.keymap:
-                    # If yes, bitwise XOR the current action with the new one
-                    # This allows for updating the accumulated actions to reflect the current sate of the keyboard inputs accurately
-                    self.last_act ^= self.keymap[event.key]
-            self.pose_update(self.last_act)
+            #if event.type == pygame.KEYUP:
+            #    # Check if the released key is in the keymap
+            #    if event.key in self.keymap:
+            #        # If yes, bitwise XOR the current action with the new one
+            #        # This allows for updating the accumulated actions to reflect the current sate of the keyboard inputs accurately
+            #        self.last_act = self.keymap[event.key]
+        
+        if turn_flag == 1:
+            if curr_iter < max_iter:
+                self.last_act = Action.LEFT
+                curr_iter += 1
+            else:
+                turn_flag = 0
+                self.last_act = Action.IDLE
+        if turn_flag == -1:
+            if curr_iter < max_iter:
+                self.last_act = Action.RIGHT
+                curr_iter += 1
+            else:
+                turn_flag = 0
+                self.last_act = Action.IDLE
+        if frwrd_flag == 1:
+            if curr_iter < max_iter_frwrd:
+                self.last_act = Action.FORWARD
+                curr_iter += 1
+            else:
+                frwrd_flag = 0
+                self.last_act = Action.IDLE
+        self.pose_update(self.last_act)
+        self.map_update()        
         return self.last_act
     
     def pose_update(self, action):
@@ -507,6 +553,12 @@ class KeyboardPlayerPyGame(Player):
 
 
 if __name__ == "__main__":
+    # global variables for turning action
+    # NOTE: the reason why they're global has to do with how pygame works
+    curr_iter = 0
+    turn_flag = 0
+    frwrd_flag = 0
+
     import vis_nav_game
     # Start the game with the KeyboardPlayerPyGame player
     vis_nav_game.play(the_player=KeyboardPlayerPyGame())

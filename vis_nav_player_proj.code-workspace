@@ -2,9 +2,6 @@
 	"folders": [
 		{
 			"path": "."
-		},
-		{
-			"path": "../Viz_nav"
 		}
 	],
 	"settings": {}
