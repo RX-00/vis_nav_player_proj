@@ -32,12 +32,10 @@ assuming you know image index of the goal image that you can step through to fin
 
 # Dev
 - player.py is skeleton code to work off on as a reference
-- basline.py is a reference for how to make your implementation
 
-# Manual Use Baseline (Navigation Phase)
-- Run, wait for SIFT, now you do exploration manually
-- Run around and query images, and you get info on what to do next
-    - Don't query deadends
-    - Basically you want the Next View ID to get closer to Goal ID
-- Baseline has no parameter tuning on stuff like K-Means clustering
+# Meeting 10/16/2024
+We only have navigation phase to work with (they provide us their exploration data (just a bunch of images saved from moving randomly in the maze)).
 
+Idea from Denis (depends on what TA responds with):
+
+We can generate a pose graph based on the camera matrix to recover rotation and translation. This pose graph can then be solved for shortest optimal path via A* or something like that. Then we can show the nodes of the pose graph referring to the images and manually move around the maze
