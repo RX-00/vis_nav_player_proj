@@ -306,6 +306,7 @@ class KeyboardPlayerPyGame(Player):
 
     def pre_exploration(self):
         K = self.get_camera_intrinsic_matrix()
+        np.save("k_matrix.npy", K)
         print(f'K={K}')
 
     def pre_navigation(self) -> None:

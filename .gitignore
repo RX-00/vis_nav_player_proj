@@ -8,4 +8,6 @@
 __pycache__/
 data/
 /dist
+/colmap_2/
+colmap_image/
 *egg-info
