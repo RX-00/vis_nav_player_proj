@@ -39,3 +39,12 @@ We only have navigation phase to work with (they provide us their exploration da
 Idea from Denis (depends on what TA responds with):
 
 We can generate a pose graph based on the camera matrix to recover rotation and translation. This pose graph can then be solved for shortest optimal path via A* or something like that. Then we can show the nodes of the pose graph referring to the images and manually move around the maze
+
+# Meeting 10/29/2024
+Things haven't been working out, so we're falling back on the baseline.Don't forget to download and use the new exploration data.
+
+[] Denis makes a good suggestion that we use the FAST feature detector instead SIFT. Use ORB as the descriptor.
+
+[] Retune the n_clusters for KMeans and leaf_size for the BallTree.
+
+[] Update the report
