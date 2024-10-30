@@ -7,7 +7,9 @@
 *.npy
 __pycache__/
 data/
+new_data/
 /dist
 /colmap_2/
 colmap_image/
+colmap_reconstruction/
 *egg-info

@@ -26,7 +26,7 @@ class KeyboardPlayerPyGame(Player):
         super(KeyboardPlayerPyGame, self).__init__()
         
         # Variables for reading exploration data
-        self.save_dir = "data/images_subsample/"
+        self.save_dir = "/Users/denismbeyakola/Desktop/vis_nav_player_proj/new_data/images/"
         if not os.path.exists(self.save_dir):
             print(f"Directory {self.save_dir} does not exist, please download exploration data.")
 
@@ -139,7 +139,7 @@ class KeyboardPlayerPyGame(Player):
         """
         Display image from database based on its ID using OpenCV
         """
-        path = self.save_dir + str(id) + ".jpg"
+        path = self.save_dir + str(id) + ".png"
         if os.path.exists(path):
             img = cv2.imread(path)
             cv2.imshow(window_name, img)
@@ -151,14 +151,17 @@ class KeyboardPlayerPyGame(Player):
         """
         Compute SIFT features for images in the data directory
         """
-        files = natsorted([x for x in os.listdir(self.save_dir) if x.endswith('.jpg')])
+        files = natsorted([x for x in os.listdir(self.save_dir) if x.endswith('.png')])
+        # breakpoint()
         sift_descriptors = list()
         for img in tqdm(files, desc="Processing images"):
             img = cv2.imread(os.path.join(self.save_dir, img))
             # Pass the image to sift detector and get keypoints + descriptions
             # We only need the descriptors
             # These descriptors represent local features extracted from the image.
+            # breakpoint()
             _, des = self.sift.detectAndCompute(img, None)
+            # breakpoint()
             # Extend the sift_descriptors list with descriptors of the current image
             sift_descriptors.extend(des)
         return np.asarray(sift_descriptors)
@@ -244,6 +247,7 @@ class KeyboardPlayerPyGame(Player):
         # TODO: try tuning the function parameters for better performance
         if self.codebook is None:
             print("Computing codebook...")
+            # breakpoint()
             self.codebook = KMeans(n_clusters=128, init='k-means++', n_init=5, verbose=1).fit(self.sift_descriptors)
             pickle.dump(self.codebook, open("codebook.pkl", "wb"))
         else:
@@ -253,7 +257,7 @@ class KeyboardPlayerPyGame(Player):
         if self.database is None:
             self.database = []
             print("Computing VLAD embeddings...")
-            exploration_observation = natsorted([x for x in os.listdir(self.save_dir) if x.endswith('.jpg')])
+            exploration_observation = natsorted([x for x in os.listdir(self.save_dir) if x.endswith('.png')])
             for img in tqdm(exploration_observation, desc="Processing images"):
                 img = cv2.imread(os.path.join(self.save_dir, img))
                 VLAD = self.get_VLAD(img)
