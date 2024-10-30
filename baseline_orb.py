@@ -44,7 +44,10 @@ class KeyboardPlayerPyGame(Player):
         if os.path.exists("codebook.pkl"):
             self.codebook = pickle.load(open("codebook.pkl", "rb"))
         # Initialize database for storing VLAD descriptors of FPV
-        self.database = None
+        if os.path.exists("database.npy"):
+            self.database = np.load("database.npy")
+        else:
+            self.database = None
         self.goal = None
 
     def reset(self):
@@ -271,10 +274,17 @@ class KeyboardPlayerPyGame(Player):
             # Build a BallTree for fast nearest neighbor search
             # We create this tree to efficiently perform nearest neighbor searches later on which will help us navigate and reach the target location
             
+            np.save("database.npy", self.database)
+
             # TODO: try tuning the leaf size for better performance
             print("Building BallTree...")
             tree = BallTree(self.database, leaf_size=75)
-            self.tree = tree        
+            self.tree = tree
+        
+        # TODO: try tuning the leaf size for better performance
+        print("Building BallTree...")
+        tree = BallTree(self.database, leaf_size=75)
+        self.tree = tree          
 
 
     def pre_navigation(self):
