@@ -24,6 +24,9 @@ class KeyboardPlayerPyGame(Player):
         self.screen = None  # Pygame screen
         self.keymap = None  # Mapping of keyboard keys to actions
         super(KeyboardPlayerPyGame, self).__init__()
+
+        # Variable to save player actions and submit for class
+        self.game = []
         
         # Variables for reading exploration data
         #self.save_dir = "data/images/" # Use all images
@@ -68,11 +71,11 @@ class KeyboardPlayerPyGame(Player):
         Handle player actions based on keyboard input
         """
         for event in pygame.event.get():
-            #  Quit if user closes window or presses escape
+            # Quit if user closes window or presses escape
             if event.type == pygame.QUIT:
                 pygame.quit()
                 self.last_act = Action.QUIT
-                return Action.QUIT
+                #return Action.QUIT
             # Check if a key has been pressed
             if event.type == pygame.KEYDOWN:
                 # Check if the pressed key is in the keymap
@@ -90,6 +93,7 @@ class KeyboardPlayerPyGame(Player):
                     # If yes, bitwise XOR the current action with the new one
                     # This allows for updating the accumulated actions to reflect the current sate of the keyboard inputs accurately
                     self.last_act ^= self.keymap[event.key]
+        
         return self.last_act
 
     def show_target_images(self):
