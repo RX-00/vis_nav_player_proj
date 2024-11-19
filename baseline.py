@@ -24,30 +24,23 @@ class KeyboardPlayerPyGame(Player):
         self.screen = None  # Pygame screen
         self.keymap = None  # Mapping of keyboard keys to actions
         super(KeyboardPlayerPyGame, self).__init__()
-
-        # Variable to save player actions and submit for class
-        self.game = []
         
         # Variables for reading exploration data
-        #self.save_dir = "data/images/" # Use all images
-        self.save_dir = "data/images_subsample/" # Use subsample of total images
+        self.save_dir = "data/images_subsample/"
         if not os.path.exists(self.save_dir):
             print(f"Directory {self.save_dir} does not exist, please download exploration data.")
 
         # Initialize SIFT detector
         # SIFT stands for Scale-Invariant Feature Transform
-        self.sift = cv2.ORB_create()
+        self.sift = cv2.SIFT_create()
         # Load pre-trained sift features and codebook
         self.sift_descriptors, self.codebook = None, None
-        if os.path.exists("orb_descriptors.npy"):
-            self.sift_descriptors = np.load("orb_descriptors.npy")
+        if os.path.exists("sift_descriptors.npy"):
+            self.sift_descriptors = np.load("sift_descriptors.npy")
         if os.path.exists("codebook.pkl"):
             self.codebook = pickle.load(open("codebook.pkl", "rb"))
         # Initialize database for storing VLAD descriptors of FPV
-        if os.path.exists("database.npy"):
-            self.database = np.load("database.npy")
-        else:
-            self.database = None
+        self.database = None
         self.goal = None
 
     def reset(self):
@@ -74,11 +67,11 @@ class KeyboardPlayerPyGame(Player):
         Handle player actions based on keyboard input
         """
         for event in pygame.event.get():
-            # Quit if user closes window or presses escape
+            #  Quit if user closes window or presses escape
             if event.type == pygame.QUIT:
                 pygame.quit()
                 self.last_act = Action.QUIT
-                #return Action.QUIT
+                return Action.QUIT
             # Check if a key has been pressed
             if event.type == pygame.KEYDOWN:
                 # Check if the pressed key is in the keymap
@@ -96,7 +89,6 @@ class KeyboardPlayerPyGame(Player):
                     # If yes, bitwise XOR the current action with the new one
                     # This allows for updating the accumulated actions to reflect the current sate of the keyboard inputs accurately
                     self.last_act ^= self.keymap[event.key]
-        
         return self.last_act
 
     def show_target_images(self):
@@ -160,16 +152,13 @@ class KeyboardPlayerPyGame(Player):
         Compute SIFT features for images in the data directory
         """
         files = natsorted([x for x in os.listdir(self.save_dir) if x.endswith('.png')])
-        # breakpoint()
         sift_descriptors = list()
         for img in tqdm(files, desc="Processing images"):
             img = cv2.imread(os.path.join(self.save_dir, img))
             # Pass the image to sift detector and get keypoints + descriptions
             # We only need the descriptors
             # These descriptors represent local features extracted from the image.
-            # breakpoint()
             _, des = self.sift.detectAndCompute(img, None)
-            # breakpoint()
             # Extend the sift_descriptors list with descriptors of the current image
             sift_descriptors.extend(des)
         return np.asarray(sift_descriptors)
@@ -238,9 +227,9 @@ class KeyboardPlayerPyGame(Player):
         if self.sift_descriptors is None:
             print("Computing SIFT features...")
             self.sift_descriptors = self.compute_sift_features()
-            np.save("orb_descriptors.npy", self.sift_descriptors)
+            np.save("sift_descriptors.npy", self.sift_descriptors)
         else:
-            print("Loaded SIFT features from orb_descriptors.npy")
+            print("Loaded SIFT features from sift_descriptors.npy")
 
         # KMeans clustering algorithm is used to create a visual vocabulary, also known as a codebook,
         # from the computed SIFT descriptors.
@@ -255,7 +244,6 @@ class KeyboardPlayerPyGame(Player):
         # TODO: try tuning the function parameters for better performance
         if self.codebook is None:
             print("Computing codebook...")
-            # breakpoint()
             self.codebook = KMeans(n_clusters=128, init='k-means++', n_init=5, verbose=1).fit(self.sift_descriptors)
             pickle.dump(self.codebook, open("codebook.pkl", "wb"))
         else:
@@ -274,17 +262,10 @@ class KeyboardPlayerPyGame(Player):
             # Build a BallTree for fast nearest neighbor search
             # We create this tree to efficiently perform nearest neighbor searches later on which will help us navigate and reach the target location
             
-            np.save("database.npy", self.database)
-
             # TODO: try tuning the leaf size for better performance
             print("Building BallTree...")
-            tree = BallTree(self.database, leaf_size=75)
-            self.tree = tree
-        
-        # TODO: try tuning the leaf size for better performance
-        print("Building BallTree...")
-        tree = BallTree(self.database, leaf_size=64)
-        self.tree = tree          
+            tree = BallTree(self.database, leaf_size=64)
+            self.tree = tree        
 
 
     def pre_navigation(self):
