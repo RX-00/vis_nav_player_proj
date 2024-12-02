@@ -26,7 +26,7 @@ class KeyboardPlayerPyGame(Player):
         super(KeyboardPlayerPyGame, self).__init__()
         
         # Variables for reading exploration data
-        self.save_dir = "data/images_subsample/"
+        self.save_dir = "/Users/denismbeyakola/Desktop/vis_nav_player_proj/data/images_subsample/"
         if not os.path.exists(self.save_dir):
             print(f"Directory {self.save_dir} does not exist, please download exploration data.")
 
@@ -40,7 +40,12 @@ class KeyboardPlayerPyGame(Player):
         if os.path.exists("codebook.pkl"):
             self.codebook = pickle.load(open("codebook.pkl", "rb"))
         # Initialize database for storing VLAD descriptors of FPV
+
         self.database = None
+
+        if os.path.exists("database.npy"):
+            self.database = np.load('database.npy').tolist()
+   
         self.goal = None
 
     def reset(self):
@@ -151,10 +156,11 @@ class KeyboardPlayerPyGame(Player):
         """
         Compute SIFT features for images in the data directory
         """
-        files = natsorted([x for x in os.listdir(self.save_dir) if x.endswith('.png')])
+        files = natsorted([x for x in os.listdir(self.save_dir) if x.endswith('.jpg')])
         sift_descriptors = list()
         for img in tqdm(files, desc="Processing images"):
-            img = cv2.imread(os.path.join(self.save_dir, img))
+            img = cv2.imread(os.path.join(self.save_dir, img),cv2.IMREAD_GRAYSCALE)
+
             # Pass the image to sift detector and get keypoints + descriptions
             # We only need the descriptors
             # These descriptors represent local features extracted from the image.
@@ -163,7 +169,7 @@ class KeyboardPlayerPyGame(Player):
             sift_descriptors.extend(des)
         return np.asarray(sift_descriptors)
     
-    def get_VLAD(self, img):
+    def get_VLAD(self, img, match= False):
         """
         Compute VLAD (Vector of Locally Aggregated Descriptors) descriptor for a given image
         """
@@ -206,7 +212,52 @@ class KeyboardPlayerPyGame(Player):
         # Finally, the VLAD feature vector is normalized by dividing it by its L2 norm, ensuring that it has unit length
         VLAD_feature = VLAD_feature/np.linalg.norm(VLAD_feature)
 
-        return VLAD_feature
+        if match:
+            return VLAD_feature, des 
+        else:
+            return VLAD_feature
+    
+    def get_best_via_geometric_verification(self, query_indexes):
+      
+        kp1, des1 = self.sift.detectAndCompute(self.fpv, None)
+        index_params = dict(algorithm=1, trees=5)  # KD-tree for SIFT descriptors
+        search_params = dict(checks=50)  # Number of checks
+        flann = cv2.FlannBasedMatcher(index_params, search_params)
+
+
+        num_inliers =  0
+        best_match_index = None
+
+        for query_idx in query_indexes[0]:
+            query_path  = self.save_dir + str(query_idx) + ".jpg"
+            # breakpoint()
+            query_image  = cv2.imread(query_path, cv2.IMREAD_GRAYSCALE)
+            # breakpoint()
+            kp2, des2 = self.sift.detectAndCompute(query_image, None)
+
+            # Feature matching using FLANN
+            matches = flann.knnMatch(des1, des2, k=2)
+            # Apply Lowe's ratio test
+            good_matches = [m for m, n in matches if m.distance < 0.75 * n.distance]
+
+            # Extract matched keypoints
+            src_pts = np.float32([kp1[m.queryIdx].pt for m in good_matches]).reshape(-1, 1, 2)
+            dst_pts = np.float32([kp2[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)
+
+            # Perform geometric verification using RANSAC
+            if len(src_pts) >= 4:  # Minimum points needed for RANSAC
+                H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 0.99)
+                matches_mask = mask.ravel().tolist()
+                inliers = [good_matches[i] for i in range(len(matches_mask)) if matches_mask[i] == 1]
+            else:
+                inliers = []
+            
+            if len(inliers)>num_inliers:
+                num_inliers = len(inliers)
+                best_match_index = query_idx 
+        return best_match_index
+
+
 
     def get_neighbor(self, img):
         """
@@ -216,8 +267,10 @@ class KeyboardPlayerPyGame(Player):
         q_VLAD = self.get_VLAD(img).reshape(1, -1)
         # This function returns the index of the closest match of the provided VLAD feature from the database the tree was created
         # The '1' indicates the we want 1 nearest neighbor
-        _, index = self.tree.query(q_VLAD, 1)
-        return index[0][0]
+        _, indexes = self.tree.query(q_VLAD, 5)
+        
+        index = self.get_best_via_geometric_verification(indexes)
+        return index
 
     def pre_nav_compute(self):
         """
@@ -253,17 +306,25 @@ class KeyboardPlayerPyGame(Player):
         if self.database is None:
             self.database = []
             print("Computing VLAD embeddings...")
-            exploration_observation = natsorted([x for x in os.listdir(self.save_dir) if x.endswith('.png')])
+            exploration_observation = natsorted([x for x in os.listdir(self.save_dir) if x.endswith('.jpg')])
             for img in tqdm(exploration_observation, desc="Processing images"):
                 img = cv2.imread(os.path.join(self.save_dir, img))
                 VLAD = self.get_VLAD(img)
                 self.database.append(VLAD)
+        
+            
                 
             # Build a BallTree for fast nearest neighbor search
             # We create this tree to efficiently perform nearest neighbor searches later on which will help us navigate and reach the target location
             
             # TODO: try tuning the leaf size for better performance
             print("Building BallTree...")
+            # breakpoint()
+            np.save("database.npy", np.array(self.database))
+            tree = BallTree(self.database, leaf_size=64)
+            self.tree = tree        
+
+        else:
             tree = BallTree(self.database, leaf_size=64)
             self.tree = tree        
 
