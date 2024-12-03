@@ -26,7 +26,8 @@ class KeyboardPlayerPyGame(Player):
         super(KeyboardPlayerPyGame, self).__init__()
         
         # Variables for reading exploration data
-        self.save_dir = "/Users/denismbeyakola/Desktop/vis_nav_player_proj/data/images_subsample/"
+        #self.save_dir = "/Users/denismbeyakola/Desktop/vis_nav_player_proj/data/images_subsample/"
+        self.save_dir = "data/images"
         if not os.path.exists(self.save_dir):
             print(f"Directory {self.save_dir} does not exist, please download exploration data.")
 
@@ -39,14 +40,15 @@ class KeyboardPlayerPyGame(Player):
             self.sift_descriptors = np.load("sift_descriptors.npy")
         if os.path.exists("codebook.pkl"):
             self.codebook = pickle.load(open("codebook.pkl", "rb"))
-        # Initialize database for storing VLAD descriptors of FPV
 
+        # Initialize database for storing VLAD descriptors of FPV
         self.database = None
 
         if os.path.exists("database.npy"):
             self.database = np.load('database.npy').tolist()
    
         self.goal = None
+        self.next_best_idx = 5 # number of next best image index to add to display
 
     def reset(self):
         # Reset the player state
@@ -144,7 +146,7 @@ class KeyboardPlayerPyGame(Player):
         """
         Display image from database based on its ID using OpenCV
         """
-        path = self.save_dir + 'image_' + str(id) + ".png"
+        path = self.save_dir + '/image_' + str(id) + ".png"
         if os.path.exists(path):
             img = cv2.imread(path)
             cv2.imshow(window_name, img)
@@ -156,7 +158,7 @@ class KeyboardPlayerPyGame(Player):
         """
         Compute SIFT features for images in the data directory
         """
-        files = natsorted([x for x in os.listdir(self.save_dir) if x.endswith('.jpg')])
+        files = natsorted([x for x in os.listdir(self.save_dir) if x.endswith('.png')])
         sift_descriptors = list()
         for img in tqdm(files, desc="Processing images"):
             img = cv2.imread(os.path.join(self.save_dir, img),cv2.IMREAD_GRAYSCALE)
@@ -229,7 +231,7 @@ class KeyboardPlayerPyGame(Player):
         best_match_index = None
 
         for query_idx in query_indexes[0]:
-            query_path  = self.save_dir + str(query_idx) + ".jpg"
+            query_path  = self.save_dir + "/image_" + str(query_idx) + ".png"
             # breakpoint()
             query_image  = cv2.imread(query_path, cv2.IMREAD_GRAYSCALE)
             # breakpoint()
@@ -306,14 +308,12 @@ class KeyboardPlayerPyGame(Player):
         if self.database is None:
             self.database = []
             print("Computing VLAD embeddings...")
-            exploration_observation = natsorted([x for x in os.listdir(self.save_dir) if x.endswith('.jpg')])
+            exploration_observation = natsorted([x for x in os.listdir(self.save_dir) if x.endswith('.png')])
             for img in tqdm(exploration_observation, desc="Processing images"):
                 img = cv2.imread(os.path.join(self.save_dir, img))
                 VLAD = self.get_VLAD(img)
                 self.database.append(VLAD)
         
-            
-                
             # Build a BallTree for fast nearest neighbor search
             # We create this tree to efficiently perform nearest neighbor searches later on which will help us navigate and reach the target location
             
@@ -348,9 +348,9 @@ class KeyboardPlayerPyGame(Player):
         # In other words, get the image from the database that closely matches current FPV
         index = self.get_neighbor(self.fpv)
         # Display the image 5 frames ahead of the neighbor, so that next best view is not exactly same as current FPV
-        self.display_img_from_id(index+3, f'Next Best View')
+        self.display_img_from_id(index+self.next_best_idx, f'Next Best View')
         # Display the next best view id along with the goal id to understand how close/far we are from the goal
-        print(f'Next View ID: {index+3} || Goal ID: {self.goal}')
+        print(f'Next View ID: {index+self.next_best_idx} || Goal ID: {self.goal}')
 
     def see(self, fpv):
         """
