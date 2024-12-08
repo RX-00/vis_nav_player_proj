@@ -222,7 +222,7 @@ class KeyboardPlayerPyGame(Player):
             # Finally, the VLAD feature vector is normalized by dividing it by its L2 norm, ensuring that it has unit length
             VLAD_feature = VLAD_feature/np.linalg.norm(VLAD_feature)
         else:
-            k = self.codebook.n_clusters
+            k = 200
             VLAD_feature = np.zeros([k, 128]) # Hardcode usual shape of des.shape[1]
 
         if match and kp > 1:
@@ -329,7 +329,12 @@ class KeyboardPlayerPyGame(Player):
             
             # TODO: try tuning the leaf size for better performance
             print("Building BallTree...")
-            # breakpoint()
+            
+            # due to image_10016.png not having any features we need to resize this
+            for i, data in enumerate(self.database):
+                if len(data) != 25600:
+                    print(i)
+                    self.database[i] = np.zeros((25600,))
             np.save("database.npy", np.array(self.database))
             tree = BallTree(self.database, leaf_size=70)
             self.tree = tree        
@@ -337,7 +342,6 @@ class KeyboardPlayerPyGame(Player):
         else:
             tree = BallTree(self.database, leaf_size=70)
             self.tree = tree        
-
 
     def pre_navigation(self):
         """
