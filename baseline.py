@@ -222,8 +222,8 @@ class KeyboardPlayerPyGame(Player):
     def get_best_via_geometric_verification(self, query_indexes):
       
         kp1, des1 = self.sift.detectAndCompute(self.fpv, None)
-        index_params = dict(algorithm=1, trees=5)  # KD-tree for SIFT descriptors
-        search_params = dict(checks=50)  # Number of checks
+        index_params = dict(algorithm=1, trees=10)  # KD-tree for SIFT descriptors
+        search_params = dict(checks=100)  # Number of checks
         flann = cv2.FlannBasedMatcher(index_params, search_params)
 
 
@@ -240,7 +240,7 @@ class KeyboardPlayerPyGame(Player):
             # Feature matching using FLANN
             matches = flann.knnMatch(des1, des2, k=2)
             # Apply Lowe's ratio test
-            good_matches = [m for m, n in matches if m.distance < 0.75 * n.distance]
+            good_matches = [m for m, n in matches if m.distance < 0.9 * n.distance]
 
             # Extract matched keypoints
             src_pts = np.float32([kp1[m.queryIdx].pt for m in good_matches]).reshape(-1, 1, 2)
@@ -299,7 +299,7 @@ class KeyboardPlayerPyGame(Player):
         # TODO: try tuning the function parameters for better performance
         if self.codebook is None:
             print("Computing codebook...")
-            self.codebook = KMeans(n_clusters=128, init='k-means++', n_init=5, verbose=1).fit(self.sift_descriptors)
+            self.codebook = KMeans(n_clusters=200, init='k-means++', n_init=5, verbose=1).fit(self.sift_descriptors)
             pickle.dump(self.codebook, open("codebook.pkl", "wb"))
         else:
             print("Loaded codebook from codebook.pkl")
@@ -321,11 +321,11 @@ class KeyboardPlayerPyGame(Player):
             print("Building BallTree...")
             # breakpoint()
             np.save("database.npy", np.array(self.database))
-            tree = BallTree(self.database, leaf_size=64)
+            tree = BallTree(self.database, leaf_size=70)
             self.tree = tree        
 
         else:
-            tree = BallTree(self.database, leaf_size=64)
+            tree = BallTree(self.database, leaf_size=70)
             self.tree = tree        
 
 
